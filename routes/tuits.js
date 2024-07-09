@@ -1,6 +1,21 @@
 const express = require("express");
+const multer = require("multer");
+const path = require("path");
 const router = express.Router();
 const Tuit = require("../models/Tuit");
+
+// Set up multer for image uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadPath = path.join(__dirname, "../uploads/");
+    cb(null, uploadPath);
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + path.extname(file.originalname));
+  },
+});
+
+const upload = multer({ storage });
 
 // Get all tuits
 router.get("/", async (req, res) => {
@@ -12,17 +27,21 @@ router.get("/", async (req, res) => {
   }
 });
 
-// Create a new tuit
-router.post("/", async (req, res) => {
+// Create a new tuit with optional image upload
+router.post("/", upload.single("image"), async (req, res) => {
   const { tuit, userId } = req.body;
-  console.log("Received tuit:", tuit);
-  console.log("Received userId:", userId);
+  let imageUrl = null;
+
+  if (req.file) {
+    imageUrl = `/uploads/${req.file.filename}`;
+  }
+
   if (!tuit || !userId) {
     console.error("Missing tuit or userId");
     return res.status(400).json({ message: "Tuit and userId are required" });
   }
 
-  const newTuit = new Tuit({ tuit, userId });
+  const newTuit = new Tuit({ tuit, userId, imageUrl });
 
   try {
     const savedTuit = await newTuit.save();
