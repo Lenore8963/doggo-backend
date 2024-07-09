@@ -1,7 +1,19 @@
-// routes/user.js
 const express = require("express");
 const router = express.Router();
 const User = require("../models/User");
+const multer = require("multer");
+const path = require("path");
+
+// Set up multer for file uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "uploads/");
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + path.extname(file.originalname));
+  },
+});
+const upload = multer({ storage });
 
 // Follow a user
 router.post("/follow", async (req, res) => {
@@ -34,6 +46,22 @@ router.post("/unfollow", async (req, res) => {
   } catch (error) {
     console.error("Error unfollowing user:", error);
     res.status(500).json({ error: "Failed to unfollow user" });
+  }
+});
+
+// Add a dog
+router.post("/add-dog", upload.single("image"), async (req, res) => {
+  try {
+    const { userId, name } = req.body;
+    const imageUrl = `/uploads/${req.file.filename}`;
+    const user = await User.findById(userId);
+
+    user.dogs.push({ name, imageUrl });
+    await user.save();
+    res.status(200).json(user);
+  } catch (error) {
+    console.error("Error adding dog:", error);
+    res.status(500).json({ error: "Failed to add dog" });
   }
 });
 
@@ -96,4 +124,5 @@ router.put("/:id", async (req, res) => {
     res.status(500).json({ error: "Failed to update user" });
   }
 });
+
 module.exports = router;
